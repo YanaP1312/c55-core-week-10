@@ -8,11 +8,6 @@ const BASE_URL = "https://www.thecocktaildb.com/api/json/v1/1";
 // Add helper functions as needed here
 
 function generateMarkdownContent(data) {
-  if (!data.drinks) {
-    return `Sorry, we haven't recipe for this cocktail
-`;
-  }
-
   const cocktails = data.drinks.map((drink) => {
     const heading = `## ${drink.strDrink}`;
 
@@ -52,7 +47,7 @@ function cocktailIngredients(drink) {
 
     if (!ingredient) break;
 
-    ingredients.push(`${measure || ""} ${ingredient}`.trim());
+    ingredients.push(`${measure || ""}${ingredient}`.trim());
   }
 
   return ingredients;
@@ -82,7 +77,14 @@ export async function main() {
     }
 
     const data = await response.json();
-    const markdownContent = generateMarkdownContent(data);
+
+    if (!data.drinks) {
+      console.error("No cocktails found with that name.");
+      return;
+    }
+
+    const markdownContent = `# Cocktail Recipes\n\n${generateMarkdownContent(data)}`;
+
     await fsPromises.writeFile(outPath, markdownContent);
   } catch (error) {
     console.error(`Something went wrong: ${error.message}`);
