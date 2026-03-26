@@ -7,33 +7,30 @@ const BASE_URL = "https://www.thecocktaildb.com/api/json/v1/1";
 
 // Add helper functions as needed here
 
-function generateMarkdownContent(data) {
-  const cocktails = data.drinks.map((drink) => {
-    const heading = `## ${drink.strDrink}`;
+function formatHeading(drink) {
+  return `## ${drink.strDrink}`;
+}
 
-    const thumbnailImage = `![${drink.strDrink}](${drink.strDrinkThumb}/medium)`;
+function formatThumbnail(drink) {
+  return `![${drink.strDrink}](${drink.strDrinkThumb}/medium)`;
+}
 
-    const category = `**Category**: ${drink.strCategory}`;
+function formatCategory(drink) {
+  return `**Category**: ${drink.strCategory}`;
+}
 
-    const idAlcoholic =
-      drink.strAlcoholic === "Alcoholic"
-        ? "**Alcoholic**: Yes"
-        : "**Alcoholic**: No";
+function formatAlcoholic(drink) {
+  return drink.strAlcoholic === "Alcoholic"
+    ? "**Alcoholic**: Yes"
+    : "**Alcoholic**: No";
+}
 
-    const listOfIngredients = cocktailIngredients(drink)
-      .map((ingredient) => `- ${ingredient}`)
-      .join("\n");
+function formatInstructions(drink) {
+  return `### Instructions\n\n${drink.strInstructions}`;
+}
 
-    const instructions = `### Instructions\n\n${drink.strInstructions}`;
-
-    const serveIn = `Serve in: ${drink.strGlass}`;
-
-    const drinkOutput = `${heading}\n\n${thumbnailImage}\n\n${category}\n\n${idAlcoholic}\n\n### Ingredients\n\n${listOfIngredients}\n\n${instructions}\n\n${serveIn}\n\n`;
-
-    return drinkOutput;
-  });
-
-  return cocktails.join("\n");
+function formatServeIn(drink) {
+  return `Serve in: ${drink.strGlass}`;
 }
 
 function cocktailIngredients(drink) {
@@ -53,6 +50,55 @@ function cocktailIngredients(drink) {
   return ingredients;
 }
 
+function generateMarkdownContent(data) {
+  return data.drinks
+    .map((drink) => {
+      const ingredients = cocktailIngredients(drink)
+        .map((ingredient) => `- ${ingredient}`)
+        .join("\n");
+
+      return [
+        formatHeading(drink),
+        "",
+        formatThumbnail(drink),
+        "",
+        formatCategory(drink),
+        "",
+        formatAlcoholic(drink),
+        "",
+        "### Ingredients",
+        "",
+        ingredients,
+        "",
+        formatInstructions(drink),
+        "",
+        formatServeIn(drink),
+        "",
+      ].join("\n");
+    })
+    .join("\n");
+}
+
+async function fetchCocktailData(url) {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+function validateCocktailData(data) {
+  if (!data.drinks) {
+    throw new Error("No cocktails found with that name.");
+  }
+}
+
+async function saveMarkdown(path, content) {
+  await fsPromises.writeFile(path, content);
+}
+
 export async function main() {
   if (process.argv.length < 3) {
     console.error("Please provide a cocktail name as a command line argument.");
@@ -66,26 +112,11 @@ export async function main() {
   const outPath = path.join(__dirname, `./output/${cocktailName}.md`);
 
   try {
-    // 1. Fetch data from the API at the given URL
-    // 2. Generate markdown content to match the examples
-    // 3. Write the generated content to a markdown file as given by outPath
+    const data = await fetchCocktailData(url);
+    validateCocktailData(data);
 
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    if (!data.drinks) {
-      console.error("No cocktails found with that name.");
-      return;
-    }
-
-    const markdownContent = `# Cocktail Recipes\n\n${generateMarkdownContent(data)}`;
-
-    await fsPromises.writeFile(outPath, markdownContent);
+    const markdown = `# Cocktail Recipes\n\n${generateMarkdownContent(data)}`;
+    await saveMarkdown(outPath, markdown);
   } catch (error) {
     console.error(`Something went wrong: ${error.message}`);
   }

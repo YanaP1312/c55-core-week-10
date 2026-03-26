@@ -20,4 +20,3 @@
 Rub the rim of the glass.
 
 Serve in: Cocktail glass
-

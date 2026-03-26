@@ -1,6 +1,30 @@
 // Change base URL for API requests to the local IP of the Post Central API server
 const BASE_URL = "http://localhost:3000";
 
+const friendlyMessages = {
+  400: "Bed request - check your input",
+  401: "You must be logged in",
+  403: "You can modify only your own posts",
+  404: "Resource not found",
+  500: "Server error - try again later",
+};
+
+function getFriendlyErrorMessage(status, defaultText) {
+  return friendlyMessages[status] || defaultText;
+}
+
+async function apiRequest(endpoint, options = {}) {
+  const response = await fetch(`${BASE_URL}${endpoint}`, options);
+
+  if (!response.ok) {
+    throw new Error(
+      `${response.status} ${getFriendlyErrorMessage(response.status, response.statusText)}`,
+    );
+  }
+
+  return await response.json();
+}
+
 // ============================================================================
 // AUTH TOKEN - Stored after login/register, sent with every request
 // ============================================================================
@@ -34,13 +58,7 @@ const getToken = () => authToken;
  * Response: { id: number, user: string, text: string, timestamp: string }
  */
 const getHello = async () => {
-  const response = await fetch(`${BASE_URL}/posts/hello`);
-  if (!response.ok) {
-    throw new Error(
-      `Failed to get hello: HTTP ${response.status} ${response.statusText}`,
-    );
-  }
-  return await response.json();
+  return apiRequest("/posts/hello");
 };
 
 // ============================================================================
@@ -53,25 +71,14 @@ const getHello = async () => {
  * Response: { user: string }
  */
 const getMe = async () => {
-  try {
-    const token = getToken();
-    const response = await fetch(`${BASE_URL}/users/me`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  const token = getToken();
 
-    if (!response.ok) {
-      throw new Error(
-        `Failed to getMe : HTTP ${response.status} ${response.statusText}`,
-      );
-    }
-
-    return await response.json();
-  } catch (error) {
-    throw new Error(`Error: ${error.message}`);
-  }
+  return apiRequest("/users/me", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 };
 
 // ============================================================================
@@ -85,19 +92,13 @@ const getMe = async () => {
  * Response: { user: string, token: string }
  */
 const createUser = async (name, password) => {
-  const response = await fetch(`${BASE_URL}/users/register`, {
+  return apiRequest("/users/register", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ name, password }),
   });
-  if (!response.ok) {
-    throw new Error(
-      `Failed to create user: HTTP ${response.status} ${response.statusText}`,
-    );
-  }
-  return await response.json();
 };
 
 /**
@@ -107,23 +108,11 @@ const createUser = async (name, password) => {
  * Response: { user: string, token: string }
  */
 const loginUser = async (name, password) => {
-  try {
-    const response = await fetch(`${BASE_URL}/users/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, password }),
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `Failed to login user: HTTP ${response.status} ${response.statusText}`,
-      );
-    }
-
-    return await response.json();
-  } catch (error) {
-    throw new Error(`Error: ${error.message}`);
-  }
+  return apiRequest("/users/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, password }),
+  });
 };
 
 // ============================================================================
@@ -137,27 +126,15 @@ const loginUser = async (name, password) => {
  * Response: { id: number, text: string, user: string }
  */
 const createPost = async (text) => {
-  try {
-    const token = getToken();
-
-    const response = await fetch(`${BASE_URL}/posts`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ text }),
-    });
-    if (!response.ok) {
-      throw new Error(
-        `Failed to create a post: HTTP ${response.status} ${response.statusText}`,
-      );
-    }
-
-    return await response.json();
-  } catch (error) {
-    throw new Error(`Error: ${error.message}`);
-  }
+  const token = getToken();
+  return apiRequest("/posts", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ text }),
+  });
 };
 
 /**
@@ -166,23 +143,11 @@ const createPost = async (text) => {
  * Response: Array of { id, text, user }
  */
 const getPosts = async () => {
-  try {
-    const token = getToken();
-    const response = await fetch(`${BASE_URL}/posts/me`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `Failed to get posts: HTTP ${response.status} ${response.statusText}`,
-      );
-    }
-
-    return await response.json();
-  } catch (error) {
-    throw new Error(`Error: ${error.message}`);
-  }
+  const token = getToken();
+  return apiRequest("/posts/me", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
 };
 
 /**
@@ -192,27 +157,16 @@ const getPosts = async () => {
  * Response: { id: number, text: string }
  */
 const updatePost = async (id, text) => {
-  try {
-    const token = getToken();
-    const response = await fetch(`${BASE_URL}/posts/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ text }),
-    });
+  const token = getToken();
 
-    if (!response.ok) {
-      throw new Error(
-        `Failed to update post: HTTP ${response.status} ${response.statusText}`,
-      );
-    }
-
-    return await response.json();
-  } catch (error) {
-    throw new Error(`Error: ${error.message}`);
-  }
+  return apiRequest(`/posts/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ text }),
+  });
 };
 
 /**
@@ -221,23 +175,11 @@ const updatePost = async (id, text) => {
  * Response: { user: string, message: string }
  */
 const deleteUser = async () => {
-  try {
-    const token = getToken();
-    const response = await fetch(`${BASE_URL}/users/me`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `Failed to delete user: HTTP ${response.status} ${response.statusText}`,
-      );
-    }
-
-    return await response.json();
-  } catch (error) {
-    throw new Error(`Error: ${error.message}`);
-  }
+  const token = getToken();
+  return apiRequest("/users/me", {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
 };
 
 /**
@@ -246,23 +188,11 @@ const deleteUser = async () => {
  * Response: { id: number, text: string, message: string }
  */
 const deletePost = async (id) => {
-  try {
-    const token = getToken();
-    const response = await fetch(`${BASE_URL}/posts/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `Failed to delete post: HTTP ${response.status} ${response.statusText}`,
-      );
-    }
-
-    return await response.json();
-  } catch (error) {
-    throw new Error(`Error: ${error.message}`);
-  }
+  const token = getToken();
+  return apiRequest(`/posts/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
 };
 
 // ============================================================================
